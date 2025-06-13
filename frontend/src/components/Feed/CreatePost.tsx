@@ -10,12 +10,39 @@ interface PostData {
   tags: string;
 }
 
+interface Post {
+  id: string;
+  title: string;
+  content: string;
+  author: {
+    username: string;
+    profile_picture?: string;
+  };
+  tags: Array<{
+    id: number;
+    name: string;
+    slug: string;
+  }>;
+  created_at: string;
+  like_count: number;
+  hug_count: number;
+  relate_count: number;
+  is_liked: boolean;
+  is_hugged: boolean;
+  is_related: boolean;
+  emoji_reactions: { [key: string]: number };
+  user_emoji_reactions: string[];
+  laugh_count: number;
+  fire_count: number;
+  check_count: number;
+}
+
 interface CreatePostProps {
-  onPostCreated?: (post: any) => void;
+  onPostCreated?: (post: Post) => void;
 }
 
 const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
-  const { isAuthenticated, accessToken } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [formData, setFormData] = useState<PostData>({
     title: '',
     content: '',
@@ -37,18 +64,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
     setLoading(true);
     setError(null);
 
-    // Debug logging
-    console.log('Auth State:', {
-      isAuthenticated,
-      hasAccessToken: !!accessToken,
-      accessToken,
-      storage: {
-        localStorage: localStorage.getItem('accessToken'),
-        sessionStorage: sessionStorage.getItem('accessToken')
-      }
-    });
-
-    if (!isAuthenticated || !accessToken) {
+    if (!isAuthenticated) {
       setError('You must be logged in to create a post');
       setLoading(false);
       return;
@@ -61,19 +77,10 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0);
 
-      // Debug logging
-      console.log('Making request with headers:', {
-        Authorization: `Bearer ${accessToken}`
-      });
-
-      const response = await api.post('/posts/', {
+      const response = await api.post<Post>('/posts/', {
         title: formData.title,
         content: formData.content,
         tag_names: tagsArray
-      }, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
       });
 
       // Reset form
@@ -87,18 +94,12 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
       if (onPostCreated) {
         onPostCreated(response.data);
       }
-    } catch (err: any) {
-      console.error('Error creating post:', err);
-      console.error('Error response:', err.response?.data);
-      console.error('Error config:', {
-        url: err.config?.url,
-        method: err.config?.method,
-        headers: {
-          ...err.config?.headers,
-          Authorization: err.config?.headers['Authorization']?.substring(0, 20) + '...'
-        }
-      });
-      setError(err.response?.data?.message || err.response?.data?.detail || 'Failed to create post');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error('Error creating post:', err);
+      }
+      console.error('Error response:', err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : 'Failed to create post');
     } finally {
       setLoading(false);
     }
