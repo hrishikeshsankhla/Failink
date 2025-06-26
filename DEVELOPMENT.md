@@ -22,6 +22,80 @@ Your Docker setup uses volume mounting, which means:
 2. **Frontend Developer** pulls latest changes
 3. **Both developers** test integration together
 
+## 🎯 Git + Docker Workflow (Recommended)
+
+### **For Backend Developer (You):**
+
+**1. Make Changes:**
+```bash
+# Edit backend files
+# Test locally at http://localhost:8000/api/docs/
+```
+
+**2. Commit and Push:**
+```bash
+git add backend/apps/posts/models.py
+git commit -m "Add featured post functionality"
+git push origin main
+```
+
+**3. Notify Frontend Developer:**
+- Share the commit message
+- Mention any breaking changes
+- Point to new API endpoints
+
+### **For Frontend Developer (Your Friend):**
+
+**1. Initial Setup (One-time):**
+```bash
+# Clone the repository
+git clone https://github.com/hrishikeshsankhla/Failink.git
+cd Failink
+
+# Set up development environment
+chmod +x scripts/dev-setup.sh
+./scripts/dev-setup.sh
+```
+
+**2. Daily Workflow:**
+```bash
+# Pull latest changes from backend developer
+git pull origin main
+
+# Start development environment
+docker-compose -f docker-compose.dev.yml up -d
+
+# Check new API endpoints
+curl http://localhost:8000/api/posts/
+# Visit: http://localhost:8000/api/docs/
+```
+
+**3. When Backend Developer Makes Changes:**
+```bash
+# 1. Pull latest changes
+git pull origin main
+
+# 2. Rebuild containers (if needed)
+docker-compose -f docker-compose.dev.yml down
+docker-compose -f docker-compose.dev.yml up --build -d
+
+# 3. Check new API endpoints
+# Visit: http://localhost:8000/api/docs/
+
+# 4. Update TypeScript interfaces if needed
+# Edit: frontend/src/api/index.ts
+
+# 5. Test new features
+# Frontend auto-reloads at: http://localhost:5173
+```
+
+**4. Commit Frontend Changes:**
+```bash
+git add frontend/src/api/index.ts
+git commit -m "Add featured post UI integration"
+git push origin main
+```
+
 ## 🛠️ Quick Start
 
 ### 1. Clone the Repository
@@ -274,7 +348,7 @@ docker-compose -f docker-compose.dev.yml exec backend python manage.py migrate
 4. **Keep dependencies updated** in both projects
 5. **Use consistent code formatting** (ESLint, Prettier, Black)
 
-# 🚀 FailInk Development Workflow
+## 🚀 FailInk Development Workflow
 
 ## 🔄 How Backend Changes Reach Frontend
 
@@ -489,9 +563,6 @@ curl http://localhost:8000/api/posts/
 # Reset database (WARNING: deletes all data)
 docker-compose down -v
 docker-compose up --build
-
-# Apply migrations
-docker exec -it failink-backend-1 python manage.py migrate
 ```
 
 ## 📞 Communication Tips
