@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # Backend Django Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - backend_venv:/app/venv
+    environment:
+      - DEBUG=True
+      - DJANGO_SECRET_KEY=dev-secret-key-change-in-production
+      - DATABASE_URL=sqlite:///db.sqlite3
+    command: python manage.py runserver 0.0.0.0:8000
+    networks:
+      - failink-network
+
+  # Frontend React Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+    networks:
+      - failink-network
+
+  # Database (Optional - for production-like development)
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=failink_dev
+      - POSTGRES_USER=failink_user
+      - POSTGRES_PASSWORD=failink_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - failink-network
+
+volumes:
+  backend_venv:
+  postgres_data:
+
+networks:
+  failink-network:
+    driver: bridge 

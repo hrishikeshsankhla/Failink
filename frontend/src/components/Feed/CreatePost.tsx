@@ -1,40 +1,13 @@
 import React, { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { motion } from 'framer-motion';
-import api from '../../lib/axios';
+import { postsAPI, type Post } from '../../api';
 import { useAuthStore } from '../../store/authStore';
 
 interface PostData {
   title: string;
   content: string;
   tags: string;
-}
-
-interface Post {
-  id: string;
-  title: string;
-  content: string;
-  author: {
-    username: string;
-    profile_picture?: string;
-  };
-  tags: Array<{
-    id: number;
-    name: string;
-    slug: string;
-  }>;
-  created_at: string;
-  like_count: number;
-  hug_count: number;
-  relate_count: number;
-  is_liked: boolean;
-  is_hugged: boolean;
-  is_related: boolean;
-  emoji_reactions: { [key: string]: number };
-  user_emoji_reactions: string[];
-  laugh_count: number;
-  fire_count: number;
-  check_count: number;
 }
 
 interface CreatePostProps {
@@ -77,7 +50,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0);
 
-      const response = await api.post<Post>('/posts/', {
+      const response = await postsAPI.create({
         title: formData.title,
         content: formData.content,
         tag_names: tagsArray
@@ -95,11 +68,11 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
         onPostCreated(response.data);
       }
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        console.error('Error creating post:', err);
-      }
-      console.error('Error response:', err instanceof Error ? err.message : 'Unknown error');
-      setError(err instanceof Error ? err.message : 'Failed to create post');
+      console.error('Error creating post:', err);
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : 'Failed to create post';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -1,3 +1,5 @@
-from django.shortcuts import render
+"""
+Views for the utils app.
+"""
 
-# Create your views here. 
+# TODO: Implement utility API views using Django REST Framework. 

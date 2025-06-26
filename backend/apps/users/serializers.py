@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
@@ -21,7 +22,23 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
+        
+        # Check if email already exists
+        if User.objects.filter(email=attrs['email']).exists():
+            raise serializers.ValidationError({"email": "A user with this email already exists."})
+        
+        # Check if username already exists
+        if User.objects.filter(username=attrs['username']).exists():
+            raise serializers.ValidationError({"username": "A user with this username already exists."})
+        
         return attrs
+
+    def validate_password(self, value):
+        try:
+            validate_password(value)
+        except ValidationError as e:
+            raise serializers.ValidationError(str(e))
+        return value
 
     def create(self, validated_data):
         validated_data.pop('password2')

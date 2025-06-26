@@ -1,5 +1,9 @@
+"""
+URL configuration for the chatbot app.
+"""
+
 from django.urls import path
 
 urlpatterns = [
-    # Define your chatbot endpoints here
+    # TODO: Add chatbot endpoints here
 ] 

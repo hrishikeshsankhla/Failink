@@ -6,45 +6,80 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DEBUG=True
+      - DEBUG=False
       - DJANGO_SETTINGS_MODULE=config.settings
       - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
-      - ./backend:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   frontend:
     build: ./frontend
     ports:
-      - "5173:5173"
+      - "80:80"
     environment:
       - VITE_API_URL=http://localhost:8000/api
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   db:
-    image: postgres:13
+    image: postgres:15
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
-      - POSTGRES_DB=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=failink_prod
+      - POSTGRES_USER=failink_user
+      - POSTGRES_PASSWORD=failink_password
     ports:
       - "5432:5432"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U failink_user -d failink_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - static_volume:/var/www/static
+      - media_volume:/var/www/media
+    depends_on:
+      - backend
+      - frontend
     networks:
       - app-network
 
 volumes:
   postgres_data:
+  static_volume:
+  media_volume:
 
 networks:
   app-network:

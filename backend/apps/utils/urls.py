@@ -1,5 +1,9 @@
+"""
+URL configuration for the utils app.
+"""
+
 from django.urls import path
 
 urlpatterns = [
-    # Define your utility endpoints here
+    # TODO: Add utility endpoints here
 ] 

@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.utils import timezone
+from rest_framework import serializers
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -27,16 +28,30 @@ class UserRegistrationView(generics.CreateAPIView):
     serializer_class = UserRegistrationSerializer
 
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'user': UserSerializer(user).data,
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = serializer.save()
+            
+            refresh = RefreshToken.for_user(user)
+            logger.info(f"User registered successfully: {user.email}")
+            
+            return Response({
+                'user': UserSerializer(user).data,
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=status.HTTP_201_CREATED)
+        except serializers.ValidationError as e:
+            logger.warning(f"Registration validation error: {e.detail}")
+            return Response({
+                'error': 'Validation failed',
+                'details': e.detail
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Unexpected error during registration: {str(e)}")
+            return Response({
+                'error': 'An unexpected error occurred during registration'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = (IsAuthenticated,)

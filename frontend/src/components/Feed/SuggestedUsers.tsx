@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { motion } from 'framer-motion';
-
-interface User {
-  id: number;
-  username: string;
-  profile_picture?: string;
-  bio?: string;
-}
+import { usersAPI, type User } from '../../api';
 
 const SuggestedUsers: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -17,8 +10,7 @@ const SuggestedUsers: React.FC = () => {
   useEffect(() => {
     const fetchSuggestedUsers = async () => {
       try {
-        // TODO: Replace with actual API endpoint
-        const response = await axios.get<User[]>('/api/users/suggested/');
+        const response = await usersAPI.getSuggested();
         // Ensure we're setting an array
         setUsers(Array.isArray(response.data) ? response.data : []);
       } catch (error) {

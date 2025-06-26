@@ -1,4 +1,4 @@
-import api from '../lib/axios';
+import { commentsAPI } from './index'
 
 export interface Comment {
   id: string;
@@ -22,17 +22,15 @@ export interface CommentListResponse {
 }
 
 export async function getComments(postId: string, page = 1) {
-  const res = await api.get<CommentListResponse>(`/posts/${postId}/comments/?page=${page}`);
+  const res = await commentsAPI.getComments(postId, page);
   return res.data;
 }
 
 export async function addComment(postId: string, content: string, parentId?: string) {
-  const data: any = { content };
-  if (parentId) data.parent = parentId;
-  const res = await api.post<Comment>(`/posts/${postId}/comments/`, data);
+  const res = await commentsAPI.addComment(postId, content, parentId);
   return res.data;
 }
 
 export async function deleteComment(postId: string, commentId: string) {
-  await api.delete(`/posts/${postId}/comments/${commentId}/`);
+  await commentsAPI.deleteComment(postId, commentId);
 } 

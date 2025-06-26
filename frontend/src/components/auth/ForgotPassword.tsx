@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { authAPI } from '../../api';
 
 export const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { forgotPassword } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,10 +15,13 @@ export const ForgotPassword = () => {
     setIsLoading(true);
 
     try {
-      await forgotPassword(email);
+      await authAPI.forgotPassword(email);
       setMessage('Password reset instructions have been sent to your email.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send reset instructions');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : 'Failed to send reset instructions';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

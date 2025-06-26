@@ -1,15 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import axios from 'axios'
-
-interface User {
-  id: string
-  email: string
-  username: string
-  profile_picture?: string
-  bio?: string
-  created_at: string
-}
+import { authAPI, type User } from '../api'
 
 interface AuthState {
   user: User | null
@@ -26,16 +17,6 @@ interface AuthState {
   clearError: () => void
 }
 
-const API_URL = 'http://localhost:8000/api'
-
-// Create a separate axios instance for auth requests
-const authAxios = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
-
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -49,13 +30,11 @@ export const useAuthStore = create<AuthState>()(
       login: async (email: string, password: string, rememberMe: boolean) => {
         set({ isLoading: true, error: null })
         try {
-          const response = await authAxios.post('/users/login/', { email, password, remember_me: rememberMe })
+          const response = await authAPI.login(email, password, rememberMe)
           const { access, refresh } = response.data
           
           // Get user profile after successful login
-          const userResponse = await authAxios.get('/users/profile/', {
-            headers: { Authorization: `Bearer ${access}` }
-          })
+          const userResponse = await authAPI.getProfile()
           
           // Store tokens based on remember me preference
           const storage = rememberMe ? localStorage : sessionStorage
@@ -71,7 +50,7 @@ export const useAuthStore = create<AuthState>()(
           })
         } catch (error: any) {
           set({
-            error: error.response?.data?.detail || 'Login failed',
+            error: error.response?.data?.detail || error.response?.data?.error || 'Login failed',
             isLoading: false,
           })
           throw error
@@ -81,12 +60,7 @@ export const useAuthStore = create<AuthState>()(
       register: async (email: string, username: string, password: string, password2: string) => {
         set({ isLoading: true, error: null })
         try {
-          const response = await authAxios.post('/users/register/', {
-            email,
-            username,
-            password,
-            password2,
-          })
+          const response = await authAPI.register(email, username, password, password2)
           const { user, access, refresh } = response.data
           
           localStorage.setItem('accessToken', access)
@@ -101,7 +75,7 @@ export const useAuthStore = create<AuthState>()(
           })
         } catch (error: any) {
           set({
-            error: error.response?.data?.detail || 'Registration failed',
+            error: error.response?.data?.detail || error.response?.data?.error || 'Registration failed',
             isLoading: false,
           })
           throw error
@@ -111,10 +85,7 @@ export const useAuthStore = create<AuthState>()(
       googleLogin: async (accessToken: string) => {
         set({ isLoading: true, error: null })
         try {
-          const response = await authAxios.post('/users/google/', {
-            access_token: accessToken,
-            provider: 'google'
-          })
+          const response = await authAPI.googleLogin(accessToken)
           const { user, access, refresh } = response.data
           
           localStorage.setItem('accessToken', access)
@@ -156,9 +127,7 @@ export const useAuthStore = create<AuthState>()(
         }
 
         try {
-          const response = await authAxios.post('/users/token/refresh/', {
-            refresh: refreshToken,
-          })
+          const response = await authAPI.refreshToken(refreshToken)
           const { access } = response.data
           
           // Store in the same storage as the original token

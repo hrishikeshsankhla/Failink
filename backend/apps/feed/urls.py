@@ -1,5 +1,9 @@
+"""
+URL configuration for the feed app.
+"""
+
 from django.urls import path
 
 urlpatterns = [
-    # Define your feed endpoints here
+    # TODO: Add feed endpoints here
 ] 

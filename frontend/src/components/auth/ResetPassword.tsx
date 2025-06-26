@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../ui/Button'
-import axios from 'axios'
+import { authAPI } from '../../api'
 
 export const ResetPassword = () => {
   const navigate = useNavigate()
@@ -31,14 +31,13 @@ export const ResetPassword = () => {
     setError(null)
 
     try {
-      await axios.post('/users/password-reset/confirm/', {
-        token,
-        password: formData.password,
-        password2: formData.password2
-      })
+      await authAPI.resetPassword(token, formData.password, formData.password2)
       navigate('/login', { state: { message: 'Password has been reset successfully' } })
-    } catch (error: any) {
-      setError(error.response?.data?.error || 'Failed to reset password')
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : 'Failed to reset password';
+      setError(errorMessage);
     } finally {
       setIsLoading(false)
     }

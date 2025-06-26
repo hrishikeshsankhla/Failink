@@ -7,7 +7,6 @@ import { Profile } from './components/profile/Profile'
 import { PrivateRoute } from './components/auth/PrivateRoute'
 import { Navbar } from './components/layout/Navbar'
 import { FeedPage } from './pages/Feed'
-import './App.css'
 
 function App() {
   return (

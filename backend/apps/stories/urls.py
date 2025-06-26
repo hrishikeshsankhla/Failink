@@ -1,5 +1,9 @@
+"""
+URL configuration for the stories app.
+"""
+
 from django.urls import path
 
 urlpatterns = [
-    # Define your story endpoints here
+    # TODO: Add story endpoints here
 ] 

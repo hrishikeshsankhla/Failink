@@ -3,37 +3,7 @@ import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import EmojiReactions from './EmojiReactions';
 import Comments from './Comments';
-import api from '../../lib/axios';
-
-interface Author {
-  username: string;
-  profile_picture?: string;
-}
-
-interface Tag {
-  id: number;
-  name: string;
-}
-
-interface Post {
-  id: string;
-  title: string;
-  content: string;
-  author: Author;
-  tags: Tag[];
-  like_count: number;
-  hug_count: number;
-  relate_count: number;
-  is_liked: boolean;
-  is_hugged: boolean;
-  is_related: boolean;
-  emoji_reactions: { [key: string]: number };
-  user_emoji_reactions: string[];
-  created_at: string;
-  laugh_count: number;
-  fire_count: number;
-  check_count: number;
-}
+import { postsAPI, type Post } from '../../api';
 
 interface PostCardProps {
   post: Post;
@@ -55,7 +25,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onReaction }) => {
 
   const handleEmojiReaction = async (emoji: string) => {
     try {
-      await api.post(`/posts/${post.id}/emoji_react/`, { emoji });
+      await postsAPI.emojiReact(post.id, emoji);
       // The parent component should refresh the post data after this
       onReaction(post.id, 'like'); // Reuse existing onReaction to trigger refresh
     } catch (error) {

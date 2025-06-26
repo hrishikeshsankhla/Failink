@@ -61,6 +61,7 @@ class PostViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def emoji_react(self, request, pk=None):
+        """Handle emoji reactions on posts."""
         post = self.get_object()
         emoji = request.data.get('emoji')
         
@@ -74,7 +75,7 @@ class PostViewSet(viewsets.ModelViewSet):
         valid_emojis = [choice[0] for choice in EmojiReaction.EMOJI_CHOICES]
         if emoji not in valid_emojis:
             return Response(
-                {'error': 'Invalid emoji'},
+                {'error': f'Invalid emoji. Must be one of: {", ".join(valid_emojis)}'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -146,18 +147,26 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         post_id = self.kwargs.get('post_pk') or self.kwargs.get('post_id')
+        if not post_id:
+            return Comment.objects.none()
         # Only top-level comments
         return Comment.objects.filter(post__id=post_id, parent=None).select_related('user').prefetch_related('replies')
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
         post_id = self.kwargs.get('post_pk') or self.kwargs.get('post_id')
-        context['post'] = Post.objects.get(id=post_id)
+        try:
+            context['post'] = Post.objects.get(id=post_id)
+        except Post.DoesNotExist:
+            raise PermissionDenied('Post not found.')
         return context
 
     def perform_create(self, serializer):
         post_id = self.kwargs.get('post_pk') or self.kwargs.get('post_id')
-        post = Post.objects.get(id=post_id)
+        try:
+            post = Post.objects.get(id=post_id)
+        except Post.DoesNotExist:
+            raise PermissionDenied('Post not found.')
         serializer.save(user=self.request.user, post=post)
 
     def destroy(self, request, *args, **kwargs):

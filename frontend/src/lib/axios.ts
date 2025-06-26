@@ -6,6 +6,7 @@ const instance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // 10 second timeout
 })
 
 // Add a request interceptor
@@ -14,17 +15,6 @@ instance.interceptors.request.use(
     // Get the access token from both storage locations
     const accessToken = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
     
-    // Debug logging
-    console.log('Request interceptor - Token:', {
-      hasToken: !!accessToken,
-      token: accessToken,
-      tokenLength: accessToken?.length,
-      storage: {
-        localStorage: localStorage.getItem('accessToken'),
-        sessionStorage: sessionStorage.getItem('accessToken')
-      }
-    })
-
     if (accessToken) {
       // Ensure the token is properly formatted
       const token = accessToken.startsWith('Bearer ') ? accessToken : `Bearer ${accessToken}`
@@ -41,17 +31,6 @@ instance.interceptors.request.use(
       config.headers['X-CSRFToken'] = csrfToken
     }
 
-    // Debug logging
-    console.log('Request config:', {
-      url: config.url,
-      method: config.method,
-      headers: {
-        ...config.headers,
-        Authorization: config.headers['Authorization']?.substring(0, 20) + '...' // Log only part of the token for security
-      },
-      baseURL: config.baseURL
-    })
-
     return config
   },
   (error) => {
@@ -64,23 +43,6 @@ instance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
-
-    // Debug logging
-    console.log('Response interceptor - Error:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      headers: error.response?.headers,
-      config: {
-        url: error.config?.url,
-        method: error.config?.method,
-        headers: {
-          ...error.config?.headers,
-          Authorization: error.config?.headers['Authorization']?.substring(0, 20) + '...' // Log only part of the token for security
-        },
-        baseURL: error.config?.baseURL
-      }
-    })
 
     // If the error is 401 and we haven't tried to refresh the token yet
     if (error.response?.status === 401 && !originalRequest._retry) {

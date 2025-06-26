@@ -1,38 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import PostCard from '../components/Feed/PostCard';
 import CreatePost from '../components/Feed/CreatePost';
-import api from '../lib/axios';
 import Sidebar from '../components/Feed/Sidebar';
 import ChatWidget from '../components/Feed/ChatWidget';
-
-interface Tag {
-  id: number;
-  name: string;
-  slug: string;
-}
-
-interface Post {
-  id: string;
-  title: string;
-  content: string;
-  author: {
-    username: string;
-    profile_picture?: string;
-  };
-  tags: Tag[];
-  created_at: string;
-  like_count: number;
-  hug_count: number;
-  relate_count: number;
-  is_liked: boolean;
-  is_hugged: boolean;
-  is_related: boolean;
-  user_emoji_reactions: string[];
-  emoji_reactions: { [key: string]: number };
-  laugh_count: number;
-  fire_count: number;
-  check_count: number;
-}
+import { postsAPI, type Post } from '../api';
 
 export const FeedPage: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -42,8 +13,8 @@ export const FeedPage: React.FC = () => {
   const fetchData = async () => {
     try {
       const [postsRes] = await Promise.all([
-        api.get<Post[]>('/posts/'),
-        api.get<Tag[]>('/posts/trending-tags/')
+        postsAPI.getAll(),
+        postsAPI.getTrendingTags()
       ]);
       
       // Ensure we're setting arrays
@@ -64,9 +35,9 @@ export const FeedPage: React.FC = () => {
 
   const handleReaction = async (postId: string, reactionType: 'like' | 'hug' | 'relate') => {
     try {
-      await api.post<{ status: string }>(`/posts/${postId}/${reactionType}/`);
+      await postsAPI[reactionType](postId);
       // Refresh the post data
-      const updatedPost = await api.get<Post>(`/posts/${postId}/`);
+      const updatedPost = await postsAPI.getById(postId);
       setPosts(posts.map(post => 
         post.id === postId ? updatedPost.data : post
       ));
