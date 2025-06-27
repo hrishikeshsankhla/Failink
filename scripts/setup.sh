@@ -72,7 +72,7 @@ else
     print_success "shared_data directory already exists"
 fi
 
-# Set proper permissions (especially important for Linux)
+# Set proper permissions on the host side (especially important for Linux)
 if [[ "$OS" == "linux" ]]; then
     print_status "Setting proper permissions for Linux..."
     chmod 755 shared_data

@@ -19,7 +19,6 @@ services:
     command: >
       sh -c "
         mkdir -p /app/shared_data &&
-        chmod 755 /app/shared_data &&
         python manage.py migrate &&
         python manage.py runserver 0.0.0.0:8000
       "
