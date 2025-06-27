@@ -4,165 +4,88 @@ FailInk is LinkedIn's hilarious evil twin — a social storytelling platform whe
 
 ## 🚀 Quick Start
 
-### Option 1: Docker (Recommended for Development)
+### Prerequisites
+- **Docker Desktop** (version 20.10+)
+- **Git**
 
-The easiest way to get started is using Docker:
-
+### Setup (All Platforms)
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/failink.git
-cd failink
+git clone https://github.com/hrishikeshsankhla/Failink.git
+cd Failink
 
 # Run the setup script
-# On Windows:
-scripts\dev-setup.bat
-
-# On Linux/Mac:
-chmod +x scripts/dev-setup.sh
-./scripts/dev-setup.sh
+chmod +x scripts/setup.sh
+./scripts/setup.sh
 ```
 
-Or manually:
-```bash
-# Create shared data directory
-mkdir shared_data
+**That's it!** The script automatically handles:
+- ✅ Cross-platform compatibility (Linux/macOS/Windows)
+- ✅ File permissions (especially for Linux)
+- ✅ Database initialization
+- ✅ Docker container setup
 
-# Start development environment
-docker-compose -f docker-compose.dev.yml up --build
+## 🌐 Access Your Application
 
-# In another terminal, run migrations
-docker-compose -f docker-compose.dev.yml exec backend python manage.py migrate
-```
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:8000/api
+- **API Documentation**: http://localhost:8000/api/docs/
+- **Django Admin**: http://localhost:8000/admin
 
-**Services will be available at:**
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:8000
-- Django Admin: http://localhost:8000/admin
+### Default Admin Credentials
+- **Username**: admin
+- **Email**: admin@failink.com
+- **Password**: admin123
 
-### Option 2: Local Development
+⚠️ **Important**: Change the password after first login!
 
-#### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL 15+ (or SQLite for development)
+## 📝 Daily Development
 
-#### Backend Setup
-1. Create and activate virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: .\venv\Scripts\activate
-```
-
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-3. Set up environment variables:
-```bash
-cp .env.example .env
-# Edit .env with your configuration
-```
-
-4. Run migrations:
-```bash
-cd backend
-python manage.py migrate
-```
-
-5. Start development server:
-```bash
-python manage.py runserver
-```
-
-#### Frontend Setup
-1. Install dependencies:
-```bash
-cd frontend
-npm install
-```
-
-2. Start development server:
-```bash
-npm run dev
-```
-
-## 🐳 Docker Development
-
-### Database Sharing with SQLite
-
-The development setup uses SQLite stored in `./shared_data/db.sqlite3` which is:
-- **Persistent** across container restarts
-- **Shared** among team members via Git (directory structure)
-- **Not committed** to version control (see `.gitignore`)
-
-### Team Collaboration
-
-**For new team members:**
-1. Clone the repository
-2. Run the setup script or manually create `shared_data` directory
-3. Start containers and run migrations
-
-**Sharing database state:**
-```bash
-# Export current database
-docker-compose -f docker-compose.dev.yml exec backend python manage.py dumpdata > shared_data/dump.json
-
-# Import database (for other team members)
-docker-compose -f docker-compose.dev.yml exec backend python manage.py loaddata shared_data/dump.json
-```
-
-**Reset database:**
-```bash
-docker-compose -f docker-compose.dev.yml down
-rm shared_data/db.sqlite3
-docker-compose -f docker-compose.dev.yml up --build
-```
-
-### Useful Docker Commands
-
+### Start/Stop Services
 ```bash
 # Start services
-docker-compose -f docker-compose.dev.yml up
+docker-compose -f docker-compose.dev.yml up -d
 
 # Stop services
 docker-compose -f docker-compose.dev.yml down
 
 # View logs
 docker-compose -f docker-compose.dev.yml logs -f
-
-# Run Django commands
-docker-compose -f docker-compose.dev.yml exec backend python manage.py shell
-
-# Access container shell
-docker-compose -f docker-compose.dev.yml exec backend bash
 ```
 
-For detailed Docker documentation, see [DOCKER_DEVELOPMENT.md](DOCKER_DEVELOPMENT.md).
-
-## 🛠️ Development
-
-### Running Tests
+### Team Collaboration
 ```bash
-# Backend
-python manage.py test
+# Pull latest changes
+git pull origin main
 
-# Frontend
-npm test
+# Rebuild if needed
+docker-compose -f docker-compose.dev.yml up --build -d
+
+# Share database data
+./scripts/share-database.sh export
+./scripts/share-database.sh import
 ```
 
-### Production Deployment
+## 🔧 Troubleshooting
+
+### Common Issues
 ```bash
-# Use production Docker setup
-docker-compose up --build
+# Permission issues (Linux)
+sudo chown -R $USER:$USER shared_data/
+
+# Database locked
+docker-compose -f docker-compose.dev.yml down
+rm shared_data/db.sqlite3
+docker-compose -f docker-compose.dev.yml up --build
+
+# View logs
+docker-compose -f docker-compose.dev.yml logs -f backend
 ```
 
-## 📝 License
-MIT License - See LICENSE file for details
+## 📚 Documentation
 
-# FailInk
-
-FailInk is a social platform where users can share their failure stories, learn from others' experiences, and build a supportive community around embracing and learning from failures.
+- **[Complete Setup Guide](SETUP.md)** - Detailed setup and troubleshooting
+- **[API Documentation](http://localhost:8000/api/docs/)** - When running locally
 
 ## Features
 
@@ -187,7 +110,7 @@ FailInk is a social platform where users can share their failure stories, learn 
 ### Backend
 - Django
 - Django REST Framework
-- PostgreSQL
+- PostgreSQL (Production) / SQLite (Development)
 - JWT Authentication
 - Google OAuth Integration
 
