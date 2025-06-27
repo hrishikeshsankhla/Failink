@@ -15,26 +15,50 @@ interface AuthState {
   logout: () => void
   refreshAccessToken: () => Promise<void>
   clearError: () => void
+  initializeAuth: () => Promise<void>
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      accessToken: localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken'),
-      refreshToken: localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken'),
-      isAuthenticated: !!(localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')),
+      accessToken: null,
+      refreshToken: null,
+      isAuthenticated: false,
       isLoading: false,
       error: null,
+
+      initializeAuth: async () => {
+        const accessToken = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
+        const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken')
+        
+        if (accessToken && refreshToken) {
+          set({ 
+            accessToken, 
+            refreshToken, 
+            isAuthenticated: true,
+            isLoading: true 
+          })
+          
+          try {
+            // Verify the token is still valid by getting user profile
+            const userResponse = await authAPI.getProfile()
+            set({
+              user: userResponse.data,
+              isLoading: false,
+            })
+          } catch (error) {
+            // Token is invalid, clear everything
+            get().logout()
+          }
+        }
+      },
 
       login: async (email: string, password: string, rememberMe: boolean) => {
         set({ isLoading: true, error: null })
         try {
           const response = await authAPI.login(email, password, rememberMe)
-          const { access, refresh } = response.data
-          
-          // Get user profile after successful login
-          const userResponse = await authAPI.getProfile()
+          const { access, refresh, user } = response.data
           
           // Store tokens based on remember me preference
           const storage = rememberMe ? localStorage : sessionStorage
@@ -42,16 +66,23 @@ export const useAuthStore = create<AuthState>()(
           storage.setItem('refreshToken', refresh)
           
           set({
-            user: userResponse.data,
+            user,
             accessToken: access,
             refreshToken: refresh,
             isAuthenticated: true,
             isLoading: false,
+            error: null,
           })
         } catch (error: any) {
+          console.error('Login error:', error)
+          const errorMessage = error.response?.data?.error || 
+                              error.response?.data?.detail || 
+                              error.message || 
+                              'Login failed. Please check your credentials.'
           set({
-            error: error.response?.data?.detail || error.response?.data?.error || 'Login failed',
+            error: errorMessage,
             isLoading: false,
+            isAuthenticated: false,
           })
           throw error
         }
@@ -72,11 +103,18 @@ export const useAuthStore = create<AuthState>()(
             refreshToken: refresh,
             isAuthenticated: true,
             isLoading: false,
+            error: null,
           })
         } catch (error: any) {
+          console.error('Registration error:', error)
+          const errorMessage = error.response?.data?.error || 
+                              error.response?.data?.detail || 
+                              error.message || 
+                              'Registration failed. Please try again.'
           set({
-            error: error.response?.data?.detail || error.response?.data?.error || 'Registration failed',
+            error: errorMessage,
             isLoading: false,
+            isAuthenticated: false,
           })
           throw error
         }
@@ -97,11 +135,18 @@ export const useAuthStore = create<AuthState>()(
             refreshToken: refresh,
             isAuthenticated: true,
             isLoading: false,
+            error: null,
           })
         } catch (error: any) {
+          console.error('Google login error:', error)
+          const errorMessage = error.response?.data?.error || 
+                              error.response?.data?.detail || 
+                              error.message || 
+                              'Google login failed. Please try again.'
           set({
-            error: error.response?.data?.detail || error.response?.data?.error || 'Google login failed',
+            error: errorMessage,
             isLoading: false,
+            isAuthenticated: false,
           })
           throw error
         }
@@ -117,6 +162,7 @@ export const useAuthStore = create<AuthState>()(
           accessToken: null,
           refreshToken: null,
           isAuthenticated: false,
+          error: null,
         })
       },
 
@@ -135,6 +181,7 @@ export const useAuthStore = create<AuthState>()(
           storage.setItem('accessToken', access)
           set({ accessToken: access })
         } catch (error) {
+          console.error('Token refresh error:', error)
           get().logout()
           throw error
         }

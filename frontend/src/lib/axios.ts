@@ -34,6 +34,7 @@ instance.interceptors.request.use(
     return config
   },
   (error) => {
+    console.error('Request interceptor error:', error)
     return Promise.reject(error)
   }
 )
@@ -44,6 +45,15 @@ instance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
+    // Log the error for debugging
+    console.error('Response error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      method: error.config?.method,
+      data: error.response?.data
+    })
+
     // If the error is 401 and we haven't tried to refresh the token yet
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
@@ -52,6 +62,7 @@ instance.interceptors.response.use(
         // Try to refresh the token
         const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken')
         if (!refreshToken) {
+          console.error('No refresh token available')
           throw new Error('No refresh token available')
         }
 
@@ -68,14 +79,28 @@ instance.interceptors.response.use(
         originalRequest.headers['Authorization'] = `Bearer ${access}`
         return instance(originalRequest)
       } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError)
         // If refresh fails, clear the tokens and redirect to login
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
         sessionStorage.removeItem('accessToken')
         sessionStorage.removeItem('refreshToken')
-        window.location.href = '/login'
+        
+        // Only redirect if we're not already on the login page
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login'
+        }
         return Promise.reject(refreshError)
       }
+    }
+
+    // Handle other common errors
+    if (error.response?.status === 403) {
+      console.error('Forbidden: User does not have permission to access this resource')
+    } else if (error.response?.status === 404) {
+      console.error('Not Found: The requested resource was not found')
+    } else if (error.response?.status >= 500) {
+      console.error('Server Error: Something went wrong on the server')
     }
 
     return Promise.reject(error)

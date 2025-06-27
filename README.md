@@ -4,13 +4,49 @@ FailInk is LinkedIn's hilarious evil twin — a social storytelling platform whe
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Option 1: Docker (Recommended for Development)
+
+The easiest way to get started is using Docker:
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/failink.git
+cd failink
+
+# Run the setup script
+# On Windows:
+scripts\dev-setup.bat
+
+# On Linux/Mac:
+chmod +x scripts/dev-setup.sh
+./scripts/dev-setup.sh
+```
+
+Or manually:
+```bash
+# Create shared data directory
+mkdir shared_data
+
+# Start development environment
+docker-compose -f docker-compose.dev.yml up --build
+
+# In another terminal, run migrations
+docker-compose -f docker-compose.dev.yml exec backend python manage.py migrate
+```
+
+**Services will be available at:**
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:8000
+- Django Admin: http://localhost:8000/admin
+
+### Option 2: Local Development
+
+#### Prerequisites
 - Python 3.11+
 - Node.js 18+
-- PostgreSQL 15+
-- Docker (optional)
+- PostgreSQL 15+ (or SQLite for development)
 
-### Backend Setup
+#### Backend Setup
 1. Create and activate virtual environment:
 ```bash
 python -m venv venv
@@ -39,7 +75,7 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-### Frontend Setup
+#### Frontend Setup
 1. Install dependencies:
 ```bash
 cd frontend
@@ -50,6 +86,59 @@ npm install
 ```bash
 npm run dev
 ```
+
+## 🐳 Docker Development
+
+### Database Sharing with SQLite
+
+The development setup uses SQLite stored in `./shared_data/db.sqlite3` which is:
+- **Persistent** across container restarts
+- **Shared** among team members via Git (directory structure)
+- **Not committed** to version control (see `.gitignore`)
+
+### Team Collaboration
+
+**For new team members:**
+1. Clone the repository
+2. Run the setup script or manually create `shared_data` directory
+3. Start containers and run migrations
+
+**Sharing database state:**
+```bash
+# Export current database
+docker-compose -f docker-compose.dev.yml exec backend python manage.py dumpdata > shared_data/dump.json
+
+# Import database (for other team members)
+docker-compose -f docker-compose.dev.yml exec backend python manage.py loaddata shared_data/dump.json
+```
+
+**Reset database:**
+```bash
+docker-compose -f docker-compose.dev.yml down
+rm shared_data/db.sqlite3
+docker-compose -f docker-compose.dev.yml up --build
+```
+
+### Useful Docker Commands
+
+```bash
+# Start services
+docker-compose -f docker-compose.dev.yml up
+
+# Stop services
+docker-compose -f docker-compose.dev.yml down
+
+# View logs
+docker-compose -f docker-compose.dev.yml logs -f
+
+# Run Django commands
+docker-compose -f docker-compose.dev.yml exec backend python manage.py shell
+
+# Access container shell
+docker-compose -f docker-compose.dev.yml exec backend bash
+```
+
+For detailed Docker documentation, see [DOCKER_DEVELOPMENT.md](DOCKER_DEVELOPMENT.md).
 
 ## 🛠️ Development
 
@@ -62,13 +151,14 @@ python manage.py test
 npm test
 ```
 
-### Docker Setup
+### Production Deployment
 ```bash
+# Use production Docker setup
 docker-compose up --build
 ```
 
 ## 📝 License
-MIT License - See LICENSE file for details 
+MIT License - See LICENSE file for details
 
 # FailInk
 
@@ -100,54 +190,6 @@ FailInk is a social platform where users can share their failure stories, learn 
 - PostgreSQL
 - JWT Authentication
 - Google OAuth Integration
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js (v18 or higher)
-- Python (v3.8 or higher)
-- PostgreSQL
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/failink.git
-cd failink
-```
-
-2. Set up the frontend:
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-3. Set up the backend:
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver
-```
-
-4. Create a `.env` file in the frontend directory:
-```
-VITE_API_URL=http://localhost:8000/api
-VITE_GOOGLE_CLIENT_ID=your_google_client_id
-```
-
-5. Create a `.env` file in the backend directory:
-```
-DEBUG=True
-SECRET_KEY=your_secret_key
-DATABASE_URL=postgresql://user:password@localhost:5432/failink
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-```
 
 ## Contributing
 

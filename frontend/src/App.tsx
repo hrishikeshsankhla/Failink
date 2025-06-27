@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
 import { Login } from './components/auth/Login'
 import { Register } from './components/auth/Register'
 import { ForgotPassword } from './components/auth/ForgotPassword'
@@ -7,8 +8,16 @@ import { Profile } from './components/profile/Profile'
 import { PrivateRoute } from './components/auth/PrivateRoute'
 import { Navbar } from './components/layout/Navbar'
 import { FeedPage } from './pages/Feed'
+import { useAuthStore } from './store/authStore'
 
 function App() {
+  const { initializeAuth } = useAuthStore()
+
+  useEffect(() => {
+    // Initialize authentication state on app load
+    initializeAuth()
+  }, [initializeAuth])
+
   return (
     <Router>
       <div className="min-h-screen bg-gray-50">
