@@ -43,23 +43,24 @@ services:
     networks:
       - failink-network
 
-  # Database (Optional - for production-like development)
-  db:
-    image: postgres:15
-    environment:
-      - POSTGRES_DB=failink_dev
-      - POSTGRES_USER=failink_user
-      - POSTGRES_PASSWORD=failink_password
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - failink-network
+  # PostgreSQL Database (Optional - for production-like development)
+  # Uncomment the lines below if you want to use PostgreSQL instead of SQLite
+  # db:
+  #   image: postgres:15
+  #   environment:
+  #     - POSTGRES_DB=failink_dev
+  #     - POSTGRES_USER=failink_user
+  #     - POSTGRES_PASSWORD=failink_password
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - failink-network
 
 volumes:
   backend_venv:
-  postgres_data:
+  # postgres_data:  # Uncomment if using PostgreSQL
 
 networks:
   failink-network:
