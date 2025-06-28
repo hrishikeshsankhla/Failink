@@ -6,10 +6,58 @@ from django.core.exceptions import ValidationError
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.SerializerMethodField()
+    
     class Meta:
         model = User
-        fields = ('id', 'email', 'username', 'profile_picture', 'bio', 'created_at')
+        fields = ('id', 'email', 'username', 'first_name', 'last_name', 'profile_picture', 'bio', 'created_at')
         read_only_fields = ('id', 'created_at')
+    
+    def get_profile_picture(self, obj):
+        """Return absolute URL for profile picture"""
+        request = self.context.get('request')
+        if obj.profile_picture:
+            url = obj.profile_picture.url
+            if request is not None:
+                return request.build_absolute_uri(url)
+            return url
+        return None
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating user profile information"""
+    
+    class Meta:
+        model = User
+        fields = ('username', 'profile_picture', 'bio', 'first_name', 'last_name')
+        read_only_fields = ('id', 'email', 'created_at')
+    
+    def validate_username(self, value):
+        """Check that username is unique"""
+        user = self.context['request'].user
+        if User.objects.exclude(id=user.id).filter(username=value).exists():
+            raise serializers.ValidationError("A user with this username already exists.")
+        return value
+    
+    def validate_profile_picture(self, value):
+        """Validate profile picture file"""
+        if value:
+            # Check file size (max 5MB)
+            if value.size > 5 * 1024 * 1024:
+                raise serializers.ValidationError("Image file size must be less than 5MB.")
+            
+            # Check file type
+            allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
+            if value.content_type not in allowed_types:
+                raise serializers.ValidationError("Only JPEG, PNG, and GIF images are allowed.")
+        
+        return value
+    
+    def update(self, instance, validated_data):
+        """Update user profile"""
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])

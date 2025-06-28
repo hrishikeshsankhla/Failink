@@ -8,6 +8,7 @@ interface PostData {
   title: string;
   content: string;
   tags: string;
+  media: File[];
 }
 
 interface CreatePostProps {
@@ -19,10 +20,12 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
   const [formData, setFormData] = useState<PostData>({
     title: '',
     content: '',
-    tags: ''
+    tags: '',
+    media: []
   });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -30,6 +33,28 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleMediaChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    // Only allow up to 10 files
+    if (files.length + mediaFiles.length > 10) {
+      setError('You can upload up to 10 media files.');
+      return;
+    }
+    // Validate file types
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/webm', 'video/ogg'];
+    for (const file of files) {
+      if (!allowedTypes.includes(file.type)) {
+        setError('Only images (jpg, png, gif) and videos (mp4, webm, ogg) are allowed.');
+        return;
+      }
+    }
+    setMediaFiles(prev => [...prev, ...files]);
+  };
+
+  const handleRemoveMedia = (index: number) => {
+    setMediaFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -44,26 +69,23 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
     }
 
     try {
-      // Convert comma-separated tags to array
       const tagsArray = formData.tags
         .split(',')
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0);
-
       const response = await postsAPI.create({
         title: formData.title,
         content: formData.content,
-        tag_names: tagsArray
+        tag_names: tagsArray,
+        media: mediaFiles,
       });
-
-      // Reset form
       setFormData({
         title: '',
         content: '',
-        tags: ''
+        tags: '',
+        media: [],
       });
-
-      // Notify parent component
+      setMediaFiles([]);
       if (onPostCreated) {
         onPostCreated(response.data);
       }
@@ -135,6 +157,37 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="interview, coding, startup, etc."
           />
+        </div>
+
+        {/* Media Upload */}
+        <div>
+          <label htmlFor="media" className="block text-sm font-medium text-gray-700 mb-1">
+            Media (up to 10 images/videos)
+          </label>
+          <input
+            type="file"
+            id="media"
+            name="media"
+            accept="image/jpeg,image/png,image/gif,video/mp4,video/webm,video/ogg"
+            multiple
+            onChange={handleMediaChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {/* Previews */}
+          {mediaFiles.length > 0 && (
+            <div className="flex flex-wrap gap-4 mt-2">
+              {mediaFiles.map((file, idx) => (
+                <div key={idx} className="relative w-24 h-24 flex flex-col items-center justify-center border rounded overflow-hidden bg-gray-50">
+                  {file.type.startsWith('image') ? (
+                    <img src={URL.createObjectURL(file)} alt="preview" className="object-cover w-full h-full" />
+                  ) : (
+                    <video src={URL.createObjectURL(file)} controls className="object-cover w-full h-full" />
+                  )}
+                  <button type="button" onClick={() => handleRemoveMedia(idx)} className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">&times;</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Error Message */}

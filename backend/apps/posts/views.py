@@ -3,12 +3,14 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from django.core.cache import cache
 from django.conf import settings
-from .models import Post, Tag, TrendingTag, EmojiReaction, Comment
+from django.db import transaction
+from .models import Post, Tag, TrendingTag, EmojiReaction, Comment, PostMedia
 from .serializers import PostSerializer, TagSerializer, TrendingTagSerializer, CommentSerializer
 from .pagination import CommentPagination, PostPagination
+from .exceptions import InvalidEmojiException, PostNotFound
 import logging
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -19,85 +21,138 @@ class PostViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
-        queryset = Post.objects.all().select_related('author').prefetch_related('tags', 'likes', 'hugs', 'relates')
+        queryset = Post.objects.all().select_related('author').prefetch_related('tags', 'likes', 'hugs', 'relates', 'media')
         
         # Filter by followed tags if provided
         followed_tags = self.request.query_params.get('followed_tags', None)
         if followed_tags:
-            tag_ids = followed_tags.split(',')
-            queryset = queryset.filter(tags__id__in=tag_ids).distinct()
+            try:
+                tag_ids = [int(tag_id.strip()) for tag_id in followed_tags.split(',') if tag_id.strip().isdigit()]
+                if tag_ids:
+                    queryset = queryset.filter(tags__id__in=tag_ids).distinct()
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid followed_tags parameter: {followed_tags}")
         
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
+        post = serializer.save(author=self.request.user)
+        files = self.request.FILES.getlist('media')
+        for file in files:
+            PostMedia.objects.create(post=post, file=file)
+
+    def perform_update(self, serializer):
+        """Ensure only the author can update their post."""
+        post = self.get_object()
+        if post.author != self.request.user:
+            raise PermissionDenied('You do not have permission to edit this post.')
+        updated_post = serializer.save()
+        files = self.request.FILES.getlist('media')
+        for file in files:
+            PostMedia.objects.create(post=updated_post, file=file)
+
+    def perform_destroy(self, instance):
+        """Ensure only the author can delete their post."""
+        if instance.author != self.request.user:
+            raise PermissionDenied('You do not have permission to delete this post.')
+        instance.delete()
 
     @action(detail=True, methods=['post'])
     def like(self, request, pk=None):
-        post = self.get_object()
-        if request.user in post.likes.all():
-            post.likes.remove(request.user)
-            return Response({'status': 'unliked'})
-        post.likes.add(request.user)
-        return Response({'status': 'liked'})
+        try:
+            post = self.get_object()
+            if request.user in post.likes.all():
+                post.likes.remove(request.user)
+                return Response({'status': 'unliked'})
+            post.likes.add(request.user)
+            return Response({'status': 'liked'})
+        except Exception as e:
+            logger.error(f"Error in like action: {str(e)}")
+            return Response(
+                {'error': 'Failed to process like action'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=True, methods=['post'])
     def hug(self, request, pk=None):
-        post = self.get_object()
-        if request.user in post.hugs.all():
-            post.hugs.remove(request.user)
-            return Response({'status': 'unhugged'})
-        post.hugs.add(request.user)
-        return Response({'status': 'hugged'})
+        try:
+            post = self.get_object()
+            if request.user in post.hugs.all():
+                post.hugs.remove(request.user)
+                return Response({'status': 'unhugged'})
+            post.hugs.add(request.user)
+            return Response({'status': 'hugged'})
+        except Exception as e:
+            logger.error(f"Error in hug action: {str(e)}")
+            return Response(
+                {'error': 'Failed to process hug action'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=True, methods=['post'])
     def relate(self, request, pk=None):
-        post = self.get_object()
-        if request.user in post.relates.all():
-            post.relates.remove(request.user)
-            return Response({'status': 'unrelated'})
-        post.relates.add(request.user)
-        return Response({'status': 'related'})
+        try:
+            post = self.get_object()
+            if request.user in post.relates.all():
+                post.relates.remove(request.user)
+                return Response({'status': 'unrelated'})
+            post.relates.add(request.user)
+            return Response({'status': 'related'})
+        except Exception as e:
+            logger.error(f"Error in relate action: {str(e)}")
+            return Response(
+                {'error': 'Failed to process relate action'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=True, methods=['post'])
     def emoji_react(self, request, pk=None):
         """Handle emoji reactions on posts."""
-        post = self.get_object()
-        emoji = request.data.get('emoji')
-        
-        if not emoji:
-            return Response(
-                {'error': 'Emoji is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        try:
+            post = self.get_object()
+            emoji = request.data.get('emoji')
             
-        # Validate emoji
-        valid_emojis = [choice[0] for choice in EmojiReaction.EMOJI_CHOICES]
-        if emoji not in valid_emojis:
+            if not emoji:
+                return Response(
+                    {'error': 'Emoji is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+            # Validate emoji
+            valid_emojis = [choice[0] for choice in EmojiReaction.EMOJI_CHOICES]
+            if emoji not in valid_emojis:
+                return Response(
+                    {'error': f'Invalid emoji. Must be one of: {", ".join(valid_emojis)}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            with transaction.atomic():
+                # Check if user already reacted with this emoji
+                reaction = EmojiReaction.objects.filter(
+                    post=post,
+                    user=request.user,
+                    emoji=emoji
+                ).first()
+                
+                if reaction:
+                    # Remove reaction if it exists
+                    reaction.delete()
+                    return Response({'status': 'removed'})
+                
+                # Create new reaction
+                EmojiReaction.objects.create(
+                    post=post,
+                    user=request.user,
+                    emoji=emoji
+                )
+                return Response({'status': 'added'})
+                
+        except Exception as e:
+            logger.error(f"Error in emoji_react action: {str(e)}")
             return Response(
-                {'error': f'Invalid emoji. Must be one of: {", ".join(valid_emojis)}'},
-                status=status.HTTP_400_BAD_REQUEST
+                {'error': 'Failed to process emoji reaction'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        
-        # Check if user already reacted with this emoji
-        reaction = EmojiReaction.objects.filter(
-            post=post,
-            user=request.user,
-            emoji=emoji
-        ).first()
-        
-        if reaction:
-            # Remove reaction if it exists
-            reaction.delete()
-            return Response({'status': 'removed'})
-        
-        # Create new reaction
-        EmojiReaction.objects.create(
-            post=post,
-            user=request.user,
-            emoji=emoji
-        )
-        return Response({'status': 'added'})
 
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
@@ -133,7 +188,7 @@ def trending_tags(request):
         return Response(
             {"error": "Failed to fetch trending tags"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        ) 
+        )
 
 class CommentPagination(PageNumberPagination):
     page_size = 10
@@ -158,7 +213,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         try:
             context['post'] = Post.objects.get(id=post_id)
         except Post.DoesNotExist:
-            raise PermissionDenied('Post not found.')
+            raise PostNotFound('Post not found.')
         return context
 
     def perform_create(self, serializer):
@@ -166,7 +221,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         try:
             post = Post.objects.get(id=post_id)
         except Post.DoesNotExist:
-            raise PermissionDenied('Post not found.')
+            raise PostNotFound('Post not found.')
         serializer.save(user=self.request.user, post=post)
 
     def destroy(self, request, *args, **kwargs):

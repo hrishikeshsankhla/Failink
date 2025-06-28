@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/feed/', include('apps.feed.urls')),  # Feed endpoints
     path('api/posts/', include('apps.posts.urls')),
     path('api/users/', include('apps.users.urls')),
     path('api/auth/', include('rest_framework.urls')),

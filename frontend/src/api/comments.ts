@@ -21,9 +21,8 @@ export interface CommentListResponse {
   previous: string | null;
 }
 
-export async function getComments(postId: string, page = 1) {
-  const res = await commentsAPI.getComments(postId, page);
-  return res.data;
+export async function getComments(postId: string, page = 1): Promise<CommentListResponse> {
+  return await commentsAPI.getComments(postId, page);
 }
 
 export async function addComment(postId: string, content: string, parentId?: string) {

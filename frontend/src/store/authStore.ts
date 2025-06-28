@@ -16,7 +16,12 @@ interface AuthState {
   refreshAccessToken: () => Promise<void>
   clearError: () => void
   initializeAuth: () => Promise<void>
+  updateUser: (user: User) => void
 }
+
+// Track initialization to prevent multiple simultaneous calls
+let isInitializing = false
+let initPromise: Promise<void> | null = null
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -29,28 +34,59 @@ export const useAuthStore = create<AuthState>()(
       error: null,
 
       initializeAuth: async () => {
-        const accessToken = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
-        const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken')
-        
-        if (accessToken && refreshToken) {
-          set({ 
-            accessToken, 
-            refreshToken, 
-            isAuthenticated: true,
-            isLoading: true 
-          })
+        // If already initializing, return the existing promise
+        if (isInitializing && initPromise) {
+          return initPromise
+        }
+
+        // If already initialized and authenticated, don't re-initialize
+        const currentState = get()
+        if (currentState.isAuthenticated && currentState.user && !currentState.isLoading) {
+          return
+        }
+
+        isInitializing = true
+        initPromise = (async () => {
+          const accessToken = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
+          const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken')
           
-          try {
-            // Verify the token is still valid by getting user profile
-            const userResponse = await authAPI.getProfile()
+          if (accessToken && refreshToken) {
+            set({ 
+              accessToken, 
+              refreshToken, 
+              isAuthenticated: true,
+              isLoading: true 
+            })
+            
+            try {
+              // Verify the token is still valid by getting user profile
+              const userResponse = await authAPI.getProfile()
+              set({
+                user: userResponse,
+                isLoading: false,
+              })
+            } catch (error) {
+              console.error('Token validation failed:', error)
+              // Token is invalid, clear everything
+              get().logout()
+            }
+          } else {
+            // No tokens found, ensure clean state
             set({
-              user: userResponse.data,
+              user: null,
+              accessToken: null,
+              refreshToken: null,
+              isAuthenticated: false,
               isLoading: false,
             })
-          } catch (error) {
-            // Token is invalid, clear everything
-            get().logout()
           }
+        })()
+
+        try {
+          await initPromise
+        } finally {
+          isInitializing = false
+          initPromise = null
         }
       },
 
@@ -73,12 +109,11 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: null,
           })
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Login error:', error)
-          const errorMessage = error.response?.data?.error || 
-                              error.response?.data?.detail || 
-                              error.message || 
-                              'Login failed. Please check your credentials.'
+          const errorMessage = error instanceof Error 
+            ? error.message 
+            : 'Login failed. Please check your credentials.'
           set({
             error: errorMessage,
             isLoading: false,
@@ -105,12 +140,11 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: null,
           })
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Registration error:', error)
-          const errorMessage = error.response?.data?.error || 
-                              error.response?.data?.detail || 
-                              error.message || 
-                              'Registration failed. Please try again.'
+          const errorMessage = error instanceof Error 
+            ? error.message 
+            : 'Registration failed. Please try again.'
           set({
             error: errorMessage,
             isLoading: false,
@@ -137,12 +171,11 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: null,
           })
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Google login error:', error)
-          const errorMessage = error.response?.data?.error || 
-                              error.response?.data?.detail || 
-                              error.message || 
-                              'Google login failed. Please try again.'
+          const errorMessage = error instanceof Error 
+            ? error.message 
+            : 'Google login failed. Please try again.'
           set({
             error: errorMessage,
             isLoading: false,
@@ -153,16 +186,19 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        // Clear all storage
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
         sessionStorage.removeItem('accessToken')
         sessionStorage.removeItem('refreshToken')
+        
         set({
           user: null,
           accessToken: null,
           refreshToken: null,
           isAuthenticated: false,
           error: null,
+          isLoading: false,
         })
       },
 
@@ -188,6 +224,8 @@ export const useAuthStore = create<AuthState>()(
       },
 
       clearError: () => set({ error: null }),
+
+      updateUser: (user: User) => set({ user }),
     }),
     {
       name: 'auth-storage',

@@ -4,7 +4,7 @@ from .models import User
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    list_display = ('email', 'username', 'is_active', 'is_staff', 'date_joined', 'last_login')
+    list_display = ('email', 'username', 'first_name', 'last_name', 'is_active', 'is_staff', 'date_joined', 'last_login')
     list_filter = ('is_active', 'is_staff', 'is_superuser', 'date_joined')
     search_fields = ('email', 'username', 'first_name', 'last_name')
     ordering = ('-date_joined',)
@@ -22,7 +22,7 @@ class CustomUserAdmin(UserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'username', 'password1', 'password2'),
+            'fields': ('email', 'username', 'first_name', 'last_name', 'password1', 'password2'),
         }),
     )
     

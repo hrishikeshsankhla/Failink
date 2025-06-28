@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Login } from './components/auth/Login'
 import { Register } from './components/auth/Register'
 import { ForgotPassword } from './components/auth/ForgotPassword'
@@ -12,10 +12,14 @@ import { useAuthStore } from './store/authStore'
 
 function App() {
   const { initializeAuth } = useAuthStore()
+  const initializedRef = useRef(false)
 
   useEffect(() => {
-    // Initialize authentication state on app load
-    initializeAuth()
+    // Only initialize once
+    if (!initializedRef.current) {
+      initializedRef.current = true
+      initializeAuth()
+    }
   }, [initializeAuth])
 
   return (
@@ -29,6 +33,14 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route
             path="/profile"
+            element={
+              <PrivateRoute>
+                <Profile />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/profile/:userId"
             element={
               <PrivateRoute>
                 <Profile />

@@ -4,13 +4,13 @@ import uuid
 
 class User(AbstractUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    email = models.EmailField(unique=True)
-    username = models.CharField(max_length=150, unique=True)
-    profile_picture = models.URLField(max_length=500, blank=True)
+    email = models.EmailField(unique=True, db_index=True)
+    username = models.CharField(max_length=150, unique=True, db_index=True)
+    profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
     bio = models.TextField(max_length=500, blank=True)
-    password_reset_token = models.CharField(max_length=100, null=True, blank=True)
-    password_reset_token_created = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    password_reset_token = models.CharField(max_length=100, null=True, blank=True, db_index=True)
+    password_reset_token_created = models.DateTimeField(null=True, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     # Add custom related names to avoid clashes
@@ -38,4 +38,11 @@ class User(AbstractUser):
     class Meta:
         db_table = 'users'
         verbose_name = 'User'
-        verbose_name_plural = 'Users' 
+        verbose_name_plural = 'Users'
+        indexes = [
+            models.Index(fields=['email']),
+            models.Index(fields=['username']),
+            models.Index(fields=['password_reset_token']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['date_joined']),
+        ] 

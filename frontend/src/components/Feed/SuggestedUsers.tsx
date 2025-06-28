@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { usersAPI, type User } from '../../api';
+import ProfileLink from '../ui/ProfileLink';
 
 const SuggestedUsers: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -12,7 +13,7 @@ const SuggestedUsers: React.FC = () => {
       try {
         const response = await usersAPI.getSuggested();
         // Ensure we're setting an array
-        setUsers(Array.isArray(response.data) ? response.data : []);
+        setUsers(Array.isArray(response) ? response : []);
       } catch (error) {
         console.error('Failed to fetch suggested users:', error);
         setError('Failed to load suggested users');
@@ -68,13 +69,9 @@ const SuggestedUsers: React.FC = () => {
               className="flex items-center justify-between"
             >
               <div className="flex items-center space-x-3">
-                <img
-                  src={user.profile_picture || '/default-avatar.png'}
-                  alt={user.username}
-                  className="w-12 h-12 rounded-full"
-                />
+                <ProfileLink user={user} pictureSize="lg" showUsername={false} />
                 <div>
-                  <h3 className="font-medium text-gray-800">{user.username}</h3>
+                  <ProfileLink user={user} showPicture={false} className="text-gray-800" />
                   <p className="text-sm text-gray-500">{user.bio}</p>
                 </div>
               </div>

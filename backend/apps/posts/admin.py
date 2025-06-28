@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Post, Tag, TrendingTag
+from .models import Post, Tag, TrendingTag, PostMedia
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
@@ -19,4 +19,10 @@ class TrendingTagAdmin(admin.ModelAdmin):
     list_display = ('tag', 'post_count', 'last_updated')
     list_filter = ('last_updated',)
     search_fields = ('tag__name',)
-    date_hierarchy = 'last_updated' 
+    date_hierarchy = 'last_updated'
+
+@admin.register(PostMedia)
+class PostMediaAdmin(admin.ModelAdmin):
+    list_display = ('post', 'file', 'uploaded_at')
+    search_fields = ('post__title', 'file')
+    list_filter = ('uploaded_at',) 
